@@ -41,7 +41,7 @@ WHERE
         and [System.WorkItemType] in(""Product Backlog Item"", ""Customer Backlog Item"")
        AND [SYStem.State] in (""New"",""InProgress"", ""In Progress"", ""Transfer Requirement"")
        AND [System.IterationPath] NOT IN(""iLendingPro\LVPB - Performance Test"", ""iLendingPro\NCB - Credit Rating"", ""iLendingPro\Next Release"", ""iLendingPro\VIB Demo"", ""iLendingPro\LOS - Version 2.0"")
-ORDER BY[System.IterationPath], [System.ChangedDate] DESC";
+ORDER BY[System.IterationPath], [SYStem.State], [System.ChangedDate] DESC";
             Dictionary<string, string> variables = new Dictionary<string, string> { { "project", teamProjectName } };
             var workItemColl = workItemStore.Query(query, variables).OfType<WorkItem>().ToList();
 
@@ -70,7 +70,7 @@ ORDER BY[System.IterationPath], [System.ChangedDate] DESC";
                 calculateRelatedItem = Task.Run(() =>
                 {
                     //WriteLine($"Reading {WorkItem.Id}");
-                    _dependItem = WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Successor").ToList();
+                    _dependItem = WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Predecessor").ToList();
                     //WriteLine($"Reading {WorkItem.Id}");
                     _childItem = WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Child").ToList();
                 });

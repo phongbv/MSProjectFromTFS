@@ -75,11 +75,12 @@ namespace MSProjectFromTFS
                 var tmpList = tasks.OfType<Task>().Where(e => string.IsNullOrEmpty(e.Name) == false);
                 var a = tmpList.Select(e => new
                 {
+                    e.Text1,
                     key = e.Name + "_" + e.Text1,
                     parent = e.Text30,
                     task = e
                 }).ToList();
-                allTasks = a.ToDictionary(e => e.key + "_" + e.parent, x => x.task);
+                allTasks = a.ToDictionary(e => string.IsNullOrEmpty(e.Text1) ? e.key + "_" + e.parent : e.Text1, x => x.task);
 
                 lstWit = lstWit.OrderBy(e => e.WorkItem.Id).ToList();
 
@@ -133,6 +134,7 @@ namespace MSProjectFromTFS
                 if (workItem.DependItemId.Any())
                 {
                     var currentTask = lstTasks[workItem.WorkItem.Id + ""];
+                    //currentTask.Predecessors = "";
                     foreach (var item in workItem.DependItemId)
                     {
                         //currentTask.PredecessorTasks.Add(lstTasks[item]);
@@ -155,7 +157,7 @@ namespace MSProjectFromTFS
             Console.WriteLine("Update task " + taskTitle + ", Level " + level);
 
             double? witId = wit == null ? default(double?) : wit.WorkItem.Id;
-            string key = taskTitle + "_" + witId + "_" + parentTask?.Name;
+            string key = witId.HasValue ? witId.ToString() : taskTitle + "_" + witId + "_" + parentTask?.Name;
             bool isExists = allTasks.ContainsKey(key);
             var witTask = isExists ? allTasks[key] :/*tasks.Add(taskTitle)*/ InsertChildTask(parentTask, taskTitle, tasks);
             if (wit != null)
@@ -172,7 +174,26 @@ namespace MSProjectFromTFS
             {
                 witTask.Name = wit.WorkItem.Title;
                 witTask.Text1 = wit.WorkItem.Id + "";
-                witTask.ResourceNames = wit.WorkItem.Fields[CoreField.AssignedTo]?.Value + "";
+                if (witTask.Start == null)
+                    witTask.Start = wit.WorkItem.Fields["Dev Start Date"].Value;
+                if (witTask.Finish == null)
+                    witTask.Finish = wit.WorkItem.Fields["Dev Due Date"].Value;
+                if (string.IsNullOrEmpty(witTask.ResourceNames))
+                {
+                    string assignTo = wit.WorkItem.Fields[CoreField.AssignedTo]?.Value + "";
+                    assignTo = assignTo.Replace(", ", "").Replace(" (iSTS)", "");
+                    var lstValues = assignTo.Split(',');
+                    witTask.ResourceNames = lstValues[0] + (lstValues.Length == 2 ? String.Join("", lstValues[1].Split(' ').Select(e => e.FirstOrDefault())) : "");
+                }
+                else
+                {
+                    string assignTo = witTask.ResourceNames;
+                    assignTo = assignTo.Replace(", ", "").Replace(" (iSTS)", "");
+                    var lstValues = assignTo.Split(',');
+                    var tmp = lstValues[0] + (lstValues.Length == 2 ? String.Join("", lstValues[1].Split(' ').Select(e => e.FirstOrDefault())) : "");
+                    witTask.ResourceNames = lstValues[0] + (lstValues.Length == 2 ? String.Join("", lstValues[1].Split(' ').Select(e => e.FirstOrDefault())) : "");
+                }
+
                 witTask.Text2 = wit.WorkItem.Type.Name;
                 witTask.Text3 = wit.WorkItem.Fields[CoreField.State]?.Value + "";
                 if (wit.IsComplete)
