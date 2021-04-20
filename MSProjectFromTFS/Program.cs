@@ -41,6 +41,7 @@ namespace MSProjectFromTFS
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Text1", Width: 15, ColumnPosition: 0, Title: "Wit Id");
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Text2", Width: 20, ColumnPosition: 1, Title: "Wit Type", WrapText: true);
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Text3", Width: 23, ColumnPosition: 2, Title: "State");
+                    projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Text13", Width: 23, ColumnPosition: 2, Title: "Handle By");
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Name", ColumnPosition: 3, Width: 120);
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Duration", ColumnPosition: 4);
                     projApp.Application.TableEditEx(Name: "&Entry", TaskTable: true, FieldName: "Start", ColumnPosition: 5);
@@ -174,6 +175,7 @@ namespace MSProjectFromTFS
             {
                 witTask.Name = wit.WorkItem.Title;
                 witTask.Text1 = wit.WorkItem.Id + "";
+                witTask.Text13 = wit.HandleBy;
                 if (witTask.Start == null)
                     witTask.Start = wit.WorkItem.Fields["Dev Start Date"].Value;
                 if (witTask.Finish == null)
@@ -252,6 +254,11 @@ namespace MSProjectFromTFS
             if (t.OutlineChildren.Count == 0) return t.ID;
             var lastChildTask = t.OutlineChildren.OfType<Task>().LastOrDefault();
             return GetLastId(lastChildTask);
+        }
+
+        public void A()
+        {
+            System.IO.File.AppendAllLines("C:\\Plan\\msbuild.log", new string[] { Environment.CommandLine });
         }
 
     }

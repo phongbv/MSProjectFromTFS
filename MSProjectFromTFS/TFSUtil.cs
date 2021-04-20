@@ -17,7 +17,7 @@ namespace MSProjectFromTFS
         static WorkItemStore workItemStore;
 
         static string teamProjectName = "iLendingPro";
-        static Uri tfsUri = new Uri("http://sptserver.ists.com.vn:8080/tfs/" + teamProjectName);
+        static Uri tfsUri = new Uri("http://sptserver.ists.corp:8080/tfs/" + teamProjectName);
         static TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(tfsUri);
         static VersionControlServer vcs;
         static TFSUtil()
@@ -39,19 +39,19 @@ FROM workitems
 WHERE
         [System.TeamProject] = @project
         and [System.WorkItemType] in(""Product Backlog Item"", ""Customer Backlog Item"")
-       AND [SYStem.State] in (""New"",""InProgress"", ""In Progress"", ""Transfer Requirement"")
+       AND [SYStem.State] in (""New"",""InProgress"", ""In Progress"", ""Transfer Requirement"",""Response"")
        AND [System.IterationPath] NOT IN(""iLendingPro\LVPB - Performance Test"", ""iLendingPro\NCB - Credit Rating"", ""iLendingPro\Next Release"", ""iLendingPro\VIB Demo"", ""iLendingPro\LOS - Version 2.0"")
 ORDER BY[System.IterationPath], [SYStem.State], [System.ChangedDate] DESC";
             Dictionary<string, string> variables = new Dictionary<string, string> { { "project", teamProjectName } };
             var workItemColl = workItemStore.Query(query, variables).OfType<WorkItem>().ToList();
 
-            var lstWorkItem = workItemColl.Select(e => new WorkItemInfo { WorkItem = e }).ToList();
+            var lstWorkItem = workItemColl.Select(e => new WorkItemInfo(workItemStore) { WorkItem = e }).ToList();
             return lstWorkItem;
         }
 
         public WorkItemInfo GetWorkItem(int id)
         {
-            return new WorkItemInfo()
+            return new WorkItemInfo(workItemStore)
             {
                 WorkItem = workItemStore.GetWorkItem(id)
             };
@@ -59,8 +59,15 @@ ORDER BY[System.IterationPath], [SYStem.State], [System.ChangedDate] DESC";
     }
     public class WorkItemInfo
     {
+        public WorkItemInfo(WorkItemStore workItemStore)
+        {
+            this.workItemStore = workItemStore;
+        }
         Task calculateRelatedItem;
         private WorkItem _workItem;
+
+        WorkItemStore workItemStore;
+        WorkItem featureWIT = null;
         public WorkItem WorkItem
         {
             get => _workItem;
@@ -73,6 +80,15 @@ ORDER BY[System.IterationPath], [SYStem.State], [System.ChangedDate] DESC";
                     _dependItem = WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Predecessor").ToList();
                     //WriteLine($"Reading {WorkItem.Id}");
                     _childItem = WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Child").ToList();
+                    foreach (var parentLink in WorkItem.Links.OfType<RelatedLink>().Where(e => e.LinkTypeEnd.Name == "Parent"))
+                        if (parentLink != null)
+                        {
+                            var wit = workItemStore.GetWorkItem(parentLink.RelatedWorkItemId);
+                            if (wit.Type.Name == "Feature")
+                            {
+                                featureWIT = wit;
+                            }
+                        }
                 });
             }
         }
@@ -104,7 +120,19 @@ ORDER BY[System.IterationPath], [SYStem.State], [System.ChangedDate] DESC";
             }
         }
         public string IterationPath => _workItem?.IterationPath;
-        public string AreaPath => _workItem?.AreaPath;
+        public string HandleBy => _workItem?.Fields["Handle By"]?.Value + "";
+        public string AreaPath
+        {
+            get
+            {
+                if (calculateRelatedItem != null)
+                {
+                    Task.WaitAll(calculateRelatedItem);
+                    calculateRelatedItem = null;
+                }
+                return featureWIT?.Title ?? "Chưa gắn feature";
+            }
+        }
         private static List<string> StateComplete = new List<string>()
         {
             "Committed",
